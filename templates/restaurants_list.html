@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dish Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search for restaurants...">
+            <button onclick="filterRestaurant()">Search</button>
+        </div>
+        <ul id="dishList" class="dish-list">
+            <!-- Restaurants will be populated here -->
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/get_restaurant_list/')
+                .then(response => response.json())
+                .then(data => {
+                    const dishList = document.getElementById('dishList');
+                    const restaurantList = data.restaurant_list;
+
+                    restaurantList.forEach(restaurant => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="/restaurantdishlist.html?restaurant_id=${restaurant['_id']}">${restaurant['_id']}</a>`;
+                        dishList.appendChild(li);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching restaurant list:', error);
+                });
+        });
+
+        function filterRestaurant() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const dishList = document.getElementById('dishList');
+            const dishes = dishList.getElementsByTagName('li');
+
+            for (let i = 0; i < dishes.length; i++) {
+                const dish = dishes[i].textContent || dishes[i].innerText;
+                if (dish.toLowerCase().indexOf(input) > -1) {
+                    dishes[i].style.display = "";
+                } else {
+                    dishes[i].style.display = "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>

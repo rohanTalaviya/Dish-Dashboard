@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dish Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search for dishes...">
+            <button onclick="filterDishes()">Search</button>
+        </div>
+        <ul id="dishList" class="dish-list">
+            <!-- Dishes will be populated here -->
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/data_list/')
+                .then(response => response.json())
+                .then(data => {
+                    const dishList = document.getElementById('dishList');
+                    data.data_list.forEach(dish => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="/dish_edit_details.html?dish_name=${dish['dish_name']}">${dish['dish_name']}</a>`;
+                        dishList.appendChild(li);
+                    });
+                });
+        });
+
+        function filterDishes() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const dishList = document.getElementById('dishList');
+            const dishes = dishList.getElementsByTagName('li');
+
+            for (let i = 0; i < dishes.length; i++) {
+                const dish = dishes[i].textContent || dishes[i].innerText;
+                if (dish.toLowerCase().indexOf(input) > -1) {
+                    dishes[i].style.display = "";
+                } else {
+                    dishes[i].style.display = "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>

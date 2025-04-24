@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dish Details</title>
+    <style>
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e, #121212); /* Gradient background */
+            margin: 0;
+            padding: 0;
+            color: #e0e0e0;
+            height: 100%; /* Full viewport height */
+            width: 100%; /* Full viewport width */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            max-width: 100%; /* Remove left and right space */
+            margin: 0; /* Remove margin */
+            background: #2a2a2a; /* Card background */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            width: 100%; /* Full viewport width */
+            height: 100%; /* Full viewport height */
+            overflow-y: auto; /* Enable scrolling if content overflows */
+            box-sizing: border-box; /* Include padding in width/height */
+        }
+        .dish-img {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        h1 input {
+            font-size: 1.8em;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            color: #ffffff;
+            border-bottom: 2px solid #444444;
+            padding: 5px;
+        }
+        h1 input:focus {
+            outline: none;
+            border-bottom-color: #007BFF;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .badge {
+            display: inline-block;
+            background: #444444;
+            color: #ffffff;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+        .badge:hover {
+            background: #007BFF;
+        }
+        .small-btn {
+            padding: 2px 4px; 
+            margin-left: 5px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em; 
+            height: 40px; 
+            width: 40px; 
+            transition: background 0.3s;
+        }
+        .small-btn:hover {
+            background-color: #0056b3;
+        }
+        input, select, textarea {
+            background: #333333;
+            color: #e0e0e0;
+            border: 1px solid #555555;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007BFF;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #388E3C;
+        }
+        #runModel {
+            background-color: #FF5722;
+        }
+        #runModel:hover {
+            background-color: #E64A19;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        ul li, ol li {
+            margin-bottom: 10px;
+        }
+        .card {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #ffffff;
+        }
+        .header-section {
+            display: flex;
+            align-items: center;
+            gap: 20px; 
+        }
+        .header-section img {
+            max-width: 150px; 
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .header-section .text-container {
+            flex: 1; 
+        }
+        .ingredients-db-grid {
+            display: grid;
+            grid-template-columns: 70% 30%; 
+            gap: 20px;
+        }
+        ul.suggestion-box {
+            position: absolute;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px; 
+            list-style: none; 
+            padding: 0; 
+            margin: 0; 
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1000; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+        }
+        ul.suggestion-box li {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #ddd;
+        }
+        ul.suggestion-box li:last-child {
+            border-bottom: none; 
+        }
+        ul.suggestion-box li:hover {
+            background: #f0f0f0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-section">
+            <img class="dish-img" id="dishImage" src="" alt="Dish Image">
+            <div class="text-container">
+                <h1 id="dishName" style="font-size: 1.8em; font-weight: bold; color: #ffffff; margin: 0;">
+                    <!-- Dish name will be displayed as plain text -->
+                </h1>
+                <textarea id="dishDescription" placeholder="Dish Description"></textarea>
+            </div>
+        </div>
+
+        <div class="section grid-2">
+            <div class="card">
+                <p><span class="label">Continental Region:</span> 
+                    <input type="text" id="continentalRegion" value="" placeholder="Enter region" style="width: 50%;">
+                </p>
+                <p><span class="label">Specific Cuisine:</span> 
+                    <input type="text" id="specificCuisine" value="" placeholder="Enter cuisine" style="width: 50%;">
+                </p>
+                <p><span class="label">Sub category:</span> 
+                    <input type="text" id="subcategory" value="" placeholder="Enter subcategory" style="width: 50%;">
+                </p>
+                <p><span class="label">Food Category:</span> 
+                    <select id="foodCategory" style="width: 50%;">
+                        <option value="Non-vegetarian">Non-vegetarian</option>
+                        <option value="Vegetarian">Vegetarian</option>
+                    </select>
+                </p>
+                <p><span class="label">Meal:</span> 
+                    <input type="text" id="mealCategory" value="" style="width: 80%;">
+                </p>
+                <p><span class="label">Course:</span> 
+                    <input type="text" id="courseCategory" value="" placeholder="Enter course" style="width: 50%;">
+                </p>
+                <p><span class="label">Timing Category:</span></p>
+                <div id="timingCategoryContainer" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                    <select id="timingCategory" style="width: 80%;">
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Snack">Snack</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Brunch">Brunch</option>
+                        <option value="Midnight Snack">Midnight Snack</option>
+                    </select>
+                    <div id="selectedTimingCategories" style="margin-top: 10px;"></div>
+                </div>
+                <p><span class="label">Cooking Style:</span> 
+                    <select id="cookingStyle" style="width: 80%;"></select> <!-- Changed to dropdown -->
+                </p>
+            </div>
+            <div class="card">
+                <p><span class="label">Cooking Methods:</span></p>
+                <div id="cookingMethodContainer">
+                    <select id="cookingMethod">
+                        <option value="Boiling">Boiling</option>
+                        <option value="Steaming">Steaming</option>
+                        <option value="Microwaving">Microwaving</option>
+                        <option value="Baking">Baking</option>
+                        <option value="Grilling">Grilling</option>
+                        <option value="Frying">Frying</option>
+                        <option value="Sautéing">Sautéing</option>
+                        <option value="Pressure Cooking">Pressure Cooking</option>
+                        <option value="Slow Cooking">Slow Cooking</option>
+                    </select>
+                    <div id="selectedCookingMethods"></div>
+                </div>
+                <p><span class="label">Cooking Time:</span> 
+                    <input type="text" id="cookingTime" value="" style="width: 80%;">
+                </p>
+                <p><span class="label">Cooking Temperature:</span> 
+                    <input type="text" id="cookingTemperature" value="" placeholder="Enter temperature" style="width: 50%;">
+                </p>
+                <p><span class="label">Allergens:</span></p>
+                <div id="allergicContentContainer" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                    <select id="allergicContent" style="width: 80%;">
+                        <option value="Dairy">Dairy</option>
+                        <option value="Cereals">Cereals</option>
+                        <option value="Crustaceans">Crustaceans</option>
+                        <option value="Soy">Soy</option>
+                        <option value="Peanuts">Peanuts</option>
+                        <option value="Nuts">Nuts</option>
+                        <option value="Mustard">Mustard</option>
+                        <option value="Sesame">Sesame</option>
+                        <option value="Fish">Fish</option>
+                        <option value="Eggs">Eggs</option>
+                        <option value="Sulphites">Sulphites</option>
+                        <option value="Lupin">Lupin</option>
+                        <option value="Molluscs">Molluscs</option>
+                        <option value="Alcohol">Alcohol</option>
+                        <option value="Celery">Celery</option>
+                    </select>
+                    <div id="selectedAllergens" style="margin-top: 10px;"></div>
+                </div>
+                <p><span class="label">Price:</span></p>
+                <input type="number" id="dishPrice" placeholder="Enter price" style="width: 50%;">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="card ingredients-db-grid"> <!-- Updated class for grid layout -->
+                <div>
+                    <h3>Ingredients</h3>
+                    <ul id="ingredientsList"></ul>
+                    <button id="addIngredient">Add Ingredient</button>
+                    <button id="runModel">Run Model</button>
+                </div>
+                <div>
+                    <h3>DB Ingredient Names</h3>
+                    <ul id="dbIngredientNames"></ul>
+                </div>
+                
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Cooking Steps</h3>
+            <ol id="cookingSteps"></ol>
+        </div>
+
+        <div class="section">
+            <h3>Nutrients (per serving)</h3>
+            <ul id="nutrientsList"></ul> <!-- Not editable -->
+        </div>
+
+        <div class="section">
+            <h3>Distributed Macros</h3>
+            <p id="distributedMacros"></p> <!-- Not editable -->
+        </div>
+
+        <div class="section">
+            <h3>Food Claims</h3>
+            <p id="foodClaims"></p> <!-- Not editable -->
+        </div>
+
+        <div class="section">
+            <h3>Optional Toppings</h3>
+            <ul id="toppingsList">
+                <!-- Each topping will have separate inputs for name and price -->
+            </ul>
+            <button id="addTopping">Add Topping</button>
+        </div>
+
+        <div class="section">
+            <h3>Complementary Dishes</h3>
+            <div id="complementaryDishesContainer" style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                <input type="text" id="complementaryDishesInput" placeholder="Type complementary dish and press Enter" style="width: 80%;">
+                <div id="selectedComplementaryDishes" style="margin-top: 10px;"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <button id="updateAllFields">
+                Update All Fields
+            </button>
+        </div>
+    </div>
+    <script src="/static/js/dish_edit_details.js"></script> <!-- Ensure this script is linked -->
+</body>
+</html>

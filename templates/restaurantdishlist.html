@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dish Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* Dark theme styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        }
+        .search-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        #restaurantDishSearchInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin-right: 10px;
+            background-color: #2c2c2c;
+            color: #e0e0e0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .dish-names-container {
+            margin-top: 20px;
+        }
+        .dish-names-container h3 {
+            margin-bottom: 10px;
+            color: #e0e0e0;
+        }
+        #dishNamesList {
+            list-style: none;
+            padding: 0;
+        }
+        #dishNamesList li {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        #dishNamesList li a {
+            text-decoration: none;
+            color: #76c7ff;
+        }
+        #dishNamesList li a:hover {
+            text-decoration: underline;
+        }
+        #dishNamesList li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-container">
+            <input type="text" id="restaurantDishSearchInput" placeholder="Search for dishes...">
+            <button onclick="filterRestaurantDishes()">Search</button>
+        </div>
+        <div id="dishNamesContainer" class="dish-names-container">
+            <h3>Dish List</h3>
+            <ul id="dishNamesList">
+                <!-- Dish names will be displayed here -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const restaurantId = urlParams.get('restaurant_id');
+
+            if (restaurantId) {
+                // Fetch and display dish names directly when the page loads
+                fetch(`/get_dish_names/?restaurant_id=${restaurantId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const dishNamesList = document.getElementById('dishNamesList');
+                        dishNamesList.innerHTML = '';
+
+                        if (data.dish_names && data.dish_names.length > 0) {
+                            data.dish_names.forEach(name => {
+                                const li = document.createElement('li');
+                                li.innerHTML = `<a href="/dish_edit_details.html?dish_name=${encodeURIComponent(name)}&source=restaurantdishlist&restaurant_id=${restaurantId}">${name}</a>`;
+                                dishNamesList.appendChild(li);
+                            });
+                        } else {
+                            dishNamesList.innerHTML = '<li>No dishes found.</li>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching dish names:', error);
+                    });
+            } else {
+                console.error('No restaurant ID provided in the query string.');
+            }
+        });
+
+        function filterRestaurantDishes() {
+            const input = document.getElementById('restaurantDishSearchInput').value.toLowerCase();
+            const dishNamesList = document.getElementById('dishNamesList');
+            const dishes = dishNamesList.getElementsByTagName('li');
+
+            for (let i = 0; i < dishes.length; i++) {
+                const dish = dishes[i].textContent || dishes[i].innerText;
+                if (dish.toLowerCase().indexOf(input) > -1) {
+                    dishes[i].style.display = "";
+                } else {
+                    dishes[i].style.display = "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
