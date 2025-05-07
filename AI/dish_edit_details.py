@@ -7,6 +7,7 @@ import json
 import re
 import requests
 import random 
+import uuid
 
 # MongoDB connection
 MONGO_URI = "mongodb://Kishan:KishankFitshield@ec2-13-233-104-209.ap-south-1.compute.amazonaws.com:27017/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
@@ -15,29 +16,54 @@ db = client["Fitshield"]
 ModelData = db["ModelData"]
 RestroModelData = db["RestroModelData"]
 RestaurantMenuData = db["RestaurantMenuData"]
-nutrients_collection = db["Nutrients2"]
+nutrients_collection = db["Nutrients"]
+ingredients_db_names = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
 
-# Normalize food name
+
 def normalize_food_name(food_name):
-    return re.sub(r'\s?\(.*?\)', '', food_name).strip().lower()
+    """Remove parentheses, lowercase, strip, and singularize simple plurals."""
+    food_name = re.sub(r'\s?\(.*?\)', '', food_name).strip().lower()
+    # Handle simple plurals (e.g., tomatoes -> tomato)
+    if food_name.endswith('es') and food_name[:-2] in food_name:
+        food_name = food_name[:-2]
+    elif food_name.endswith('s') and food_name[:-1] in food_name:
+        food_name = food_name[:-1]
+    return food_name.replace(" ", "")
 
-# Find ingredient name using fuzzy matching
+
 def find_ingredient_name(partial_name):
-    data = list(nutrients_collection.find({}, {'_id': 0, 'Food name': 1}))
-    partial_name_no_spaces = partial_name.replace(" ", "").strip().lower()
-    food_names = [normalize_food_name(food['Food name']) for food in data]
-    matches = process.extract(partial_name_no_spaces, food_names, limit=10, scorer=fuzz.WRatio)
-    filtered_matches = [match for match in matches if match[1] >= 65]
+    def normalize(text):
+        return re.sub(r'\s?\(.*?\)', '', text).strip().lower()
 
-    if not filtered_matches:
-        return "No close match found"
+    # Token sort normalization
+    user_input = normalize(partial_name)
+    user_tokens = set(user_input.split())
 
-    for match in filtered_matches:
-        original_food_name = data[food_names.index(match[0])]['Food name']
-        if normalize_food_name(original_food_name).startswith(partial_name_no_spaces):
-            return original_food_name
-    best_match = filtered_matches[0]
-    return data[food_names.index(best_match[0])]['Food name']
+    # Prepare DB food names
+    db_names = [normalize(food['food_name']) for food in ingredients_db_names]
+
+    # Use token_sort_ratio for better word order matching
+    matches = process.extract(
+        user_input, db_names, scorer=fuzz.token_sort_ratio, limit=10
+    )
+
+    # Filter good matches
+    good_matches = [m for m in matches if m[1] >= 90]
+
+    # Prefer exact word token match
+    for m in good_matches:
+        idx = db_names.index(m[0])
+        original = ingredients_db_names[idx]['food_name']
+        if user_tokens.issubset(set(m[0].split())):
+            return original  # All words present, regardless of order
+
+    # Return best match
+    if good_matches:
+        idx = db_names.index(good_matches[0][0])
+        return ingredients_db_names[idx]['food_name']
+
+    return "No close match found"
+
 
 # Check ingredient correctness using generative AI
 def check_ingredient(ingredient_name, db_ingredient_name):
@@ -60,6 +86,7 @@ def check_ingredient(ingredient_name, db_ingredient_name):
     return response_text if response_text in ["true", "false"] else "false"
 
 dish_details = []
+
 # Get dish details and validate ingredients
 def get_dish_details(request):
     dish_name = request.GET.get('dish_name')
@@ -98,8 +125,8 @@ def get_dish_details(request):
     return JsonResponse({'dish_details': dish_details})
 
 def generate_ingredient_id(ingredient_name):
-    random_digits = random.randint(1000, 99999)
-    ingredient_id = f"{ingredient_name.replace(' ', '_')}_{random_digits}"
+    random_digits = uuid.uuid4()
+    ingredient_id = f"{ingredient_name.replace(' ', '')}_{random_digits}" 
     return ingredient_id
 
 def update_origin_ingredients(ingredients, origin_ingredient):
@@ -271,9 +298,9 @@ def suggest_ingredient_name(request):
 
 def suggest_ingredient_name_function(partial_name):
     """Suggest top 10 food names based on partial input using fuzzy matching with exact match priority."""
-    data = list(nutrients_collection.find({}, {'_id': 0, 'Food name': 1}))
+    data = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
     partial_name_no_spaces = partial_name.replace(" ", "").strip().lower()
-    food_names = [normalize_food_name(food['Food name']) for food in data]
+    food_names = [normalize_food_name(food['food_name']) for food in data]
     matches = process.extract(partial_name_no_spaces, food_names, limit=5, scorer=fuzz.WRatio)
     filtered_matches = [match for match in matches if match[1] >= 65]
 
@@ -283,7 +310,7 @@ def suggest_ingredient_name_function(partial_name):
     top_matches = []
     for match in filtered_matches:
         index = food_names.index(match[0])
-        original_food_name = data[index]['Food name']
+        original_food_name = data[index]['food_name']
         top_matches.append(original_food_name)
 
     return top_matches

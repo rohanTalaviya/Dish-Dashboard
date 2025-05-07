@@ -52,11 +52,10 @@ def get_dish_names(request):
             {"_id": restaurant_id},
             {"menu.dish_name": 1, "_id": 0}
         )
-        print("Fetched result for dish names:", result)  # Debugging log
 
         # Safely extract dish names, ignoring entries without 'dish_name'
         dish_names = [dish.get("dish_name") for dish in result.get("menu", []) if "dish_name" in dish]
-        print("Fetched dish names:", dish_names)
+        #print("Fetched dish names:", dish_names)
 
         return JsonResponse({'dish_names': dish_names})
     except Exception as e:
