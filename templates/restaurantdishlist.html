@@ -8,19 +8,26 @@
     <style>
         /* Dark theme styling */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', sans-serif;
             margin: 0;
             padding: 0;
             background-color: #121212;
             color: #e0e0e0;
+            height: 100vh; /* Full height of the viewport */
+            display: flex;
+            flex-direction: column;
         }
         .container {
-            max-width: 800px;
-            margin: 20px auto;
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+            max-width: 100%; /* Remove left and right space */
+            margin: 0; /* Remove margin */
+            background: #2a2a2a; /* Card background */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            width: 100%; /* Full viewport width */
+            height: 100%; /* Full viewport height */
+            overflow-y: auto; /* Enable scrolling if content overflows */
+            box-sizing: border-box; /* Include padding in width/height */
         }
         .search-container {
             display: flex;
@@ -29,48 +36,76 @@
         }
         #restaurantDishSearchInput {
             flex: 1;
-            padding: 10px;
-            border: 1px solid #333;
-            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 6px;
             margin-right: 10px;
             background-color: #2c2c2c;
             color: #e0e0e0;
+            font-size: 16px;
         }
         button {
-            padding: 10px 20px;
+            padding: 12px 25px;
             background-color: #007bff;
             color: #fff;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
         }
         button:hover {
             background-color: #0056b3;
         }
         .dish-names-container {
             margin-top: 20px;
+            flex: 1; /* Allow this section to grow and fill available space */
+            overflow-y: auto; /* Enable scrolling for the dish list */
         }
         .dish-names-container h3 {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             color: #e0e0e0;
+            font-size: 24px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 5px;
         }
         #dishNamesList {
             list-style: none;
             padding: 0;
+            margin: 0;
         }
         #dishNamesList li {
-            padding: 10px;
+            padding: 15px;
             border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+        #dishNamesList li:hover {
+            background-color: #2a2a2a;
         }
         #dishNamesList li a {
             text-decoration: none;
             color: #76c7ff;
+            font-size: 18px;
+            font-weight: bold;
+            white-space: normal; /* Allow wrapping */
+            overflow: visible; /* Remove overflow restriction */
+            text-overflow: clip; /* Remove ellipsis */
         }
         #dishNamesList li a:hover {
             text-decoration: underline;
         }
         #dishNamesList li:last-child {
             border-bottom: none;
+        }
+        .missing-ingredient {
+            font-size: 14px;
+            color: #ff6f61;
+            background: #2c2c2c;
+            padding: 5px 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -94,17 +129,22 @@
             const restaurantId = urlParams.get('restaurant_id');
 
             if (restaurantId) {
-                // Fetch and display dish names directly when the page loads
+                // Fetch and display dish data directly when the page loads
                 fetch(`/get_dish_names/?restaurant_id=${restaurantId}`)
                     .then(response => response.json())
                     .then(data => {
                         const dishNamesList = document.getElementById('dishNamesList');
                         dishNamesList.innerHTML = '';
 
-                        if (data.dish_names && data.dish_names.length > 0) {
-                            data.dish_names.forEach(name => {
+                        if (data.dish_data && data.dish_data.length > 0) {
+                            data.dish_data.forEach(dish => {
                                 const li = document.createElement('li');
-                                li.innerHTML = `<a href="/dish_edit_details.html?dish_name=${encodeURIComponent(name)}&source=restaurantdishlist&restaurant_id=${restaurantId}">${name}</a>`;
+                                li.innerHTML = `
+                                    <a href="/dish_edit_details.html?dish_name=${encodeURIComponent(dish.dish_name)}&source=restaurantdishlist&restaurant_id=${restaurantId}">
+                                        ${dish.dish_name}
+                                    </a>
+                                    <span class="missing-ingredient">${dish.not_found_ingredient ? `Missing: ${dish.not_found_ingredient}` : 'No missing ingredients'}</span>
+                                `;
                                 dishNamesList.appendChild(li);
                             });
                         } else {
@@ -112,7 +152,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error fetching dish names:', error);
+                        console.error('Error fetching dish data:', error);
                     });
             } else {
                 console.error('No restaurant ID provided in the query string.');

@@ -62,7 +62,7 @@ def find_ingredient_name(partial_name):
         idx = db_names.index(good_matches[0][0])
         return ingredients_db_names[idx]['food_name']
 
-    return "No close match found"
+    return "No match found"
 
 
 # Check ingredient correctness using generative AI
@@ -172,16 +172,10 @@ def update_dish_fields(request):
         try:
             # Parse the request body
             data = json.loads(request.body)
-            print("Received data:", data)  # Debugging log
             dish_name = data.get('dish_name')
             updates = data.get('updates', {})
             source = data.get('source')
             restaurant_id = data.get('restaurant_id')
-
-            # Debugging logs
-            print("Received update request for dish:", dish_name)
-            print("Updates:", updates)
-            print("Source:", source)
 
             if not dish_name or not updates:
                 return JsonResponse({'error': 'Dish name and updates are required'}, status=400)
@@ -223,7 +217,6 @@ def update_dish_fields(request):
 
             return JsonResponse({'success': True, 'message': 'Dish fields updated successfully'})
         except Exception as e:
-            print("Error updating dish fields:", str(e))  # Debugging log for errors
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
@@ -233,7 +226,6 @@ def run_model(request):
         try:
             # Parse the request body
             data = json.loads(request.body)
-            print("Received payload for run_model:", data)  # Debugging log
 
             # Validate required fields
             restro_id = data.get('restaurant_id')

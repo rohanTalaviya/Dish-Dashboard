@@ -29,14 +29,14 @@ def get_restaurant_dish_list(request):
 
         # Fetch data from MongoDB with the specified restaurant ID
         restaurant_dish_list = list(RestaurantMenuData.find({"_id": restaurant_id}, {'_id': 1}))
-        print("Fetched restaurant dish list:", restaurant_dish_list)  # Debugging log
+        print("Fetched restaurant dish list:", restaurant_dish_list)
 
         if not restaurant_dish_list:
-            print(f"No data found for the restaurant ID: {restaurant_id}")  # Debugging log
+            print(f"No data found for the restaurant ID: {restaurant_id}")
 
         return JsonResponse({'restaurant_dish_list': restaurant_dish_list})
     except Exception as e:
-        print("Error fetching restaurant dish list:", str(e))  # Debugging log for errors
+        print("Error fetching restaurant dish list:", str(e)) 
         return JsonResponse({'error': 'Failed to fetch restaurant dish list', 'details': str(e)}, status=500)
 
 def get_dish_names(request):
@@ -47,17 +47,24 @@ def get_dish_names(request):
         if not restaurant_id:
             return JsonResponse({'error': 'Restaurant ID is required'}, status=400)
 
-        # Fetch dish names for the specified restaurant ID
+        # Fetch dish names and not_found_ingredient for the specified restaurant ID
         result = RestaurantMenuData.find_one(
             {"_id": restaurant_id},
-            {"menu.dish_name": 1, "_id": 0}
+            {"menu.dish_name": 1, "menu.not_found_ingredient": 1, "_id": 0}
         )
+        
+        # Safely extract dish names and not_found_ingredient
+        dish_data = [
+            {
+                "dish_name": dish.get("dish_name"),
+                "not_found_ingredient": dish.get("not_found_ingredient")
+            }
+            for dish in result.get("menu", [])
+            if "dish_name" in dish
+        ]
+        #print("Fetched dish data:", dish_data)
 
-        # Safely extract dish names, ignoring entries without 'dish_name'
-        dish_names = [dish.get("dish_name") for dish in result.get("menu", []) if "dish_name" in dish]
-        #print("Fetched dish names:", dish_names)
-
-        return JsonResponse({'dish_names': dish_names})
+        return JsonResponse({'dish_data': dish_data})
     except Exception as e:
         print("Error fetching dish names:", str(e))  # Debugging log for errors
         return JsonResponse({'error': 'Failed to fetch dish names', 'details': str(e)}, status=500)
