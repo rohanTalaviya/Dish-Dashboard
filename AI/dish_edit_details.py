@@ -6,8 +6,11 @@ import google.generativeai as genai
 import json
 import re
 import requests
-import random 
 import uuid
+
+from nltk.stem import PorterStemmer
+stemmer = PorterStemmer()
+
 
 # MongoDB connection
 MONGO_URI = "mongodb://Kishan:KishankFitshield@ec2-13-233-104-209.ap-south-1.compute.amazonaws.com:27017/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
@@ -31,38 +34,24 @@ def normalize_food_name(food_name):
     return food_name.replace(" ", "")
 
 
-def find_ingredient_name(partial_name):
-    def normalize(text):
-        return re.sub(r'\s?\(.*?\)', '', text).strip().lower()
+def normalize(text):
+    text = re.sub(r'\s?\(.*?\)', '', text).strip().lower()
+    return ' '.join([stemmer.stem(word) for word in text.split()])
 
-    # Token sort normalization
+
+def find_ingredient_name(partial_name, threshold=90):
     user_input = normalize(partial_name)
-    user_tokens = set(user_input.split())
-
-    # Prepare DB food names
     db_names = [normalize(food['food_name']) for food in ingredients_db_names]
 
-    # Use token_sort_ratio for better word order matching
-    matches = process.extract(
-        user_input, db_names, scorer=fuzz.token_sort_ratio, limit=10
-    )
+    matches = process.extract(user_input, db_names, scorer=fuzz.token_sort_ratio, limit=10)
 
-    # Filter good matches
-    good_matches = [m for m in matches if m[1] >= 90]
+    good_matches = [m for m in matches if m[1] >= threshold]
 
-    # Prefer exact word token match
-    for m in good_matches:
-        idx = db_names.index(m[0])
-        original = ingredients_db_names[idx]['food_name']
-        if user_tokens.issubset(set(m[0].split())):
-            return original  # All words present, regardless of order
-
-    # Return best match
     if good_matches:
         idx = db_names.index(good_matches[0][0])
         return ingredients_db_names[idx]['food_name']
 
-    return "No match found"
+    return "No close match found"
 
 
 # Check ingredient correctness using generative AI
