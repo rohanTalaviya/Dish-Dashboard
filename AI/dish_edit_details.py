@@ -23,17 +23,6 @@ nutrients_collection = db["Nutrients"]
 ingredients_db_names = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
 
 
-def normalize_food_name(food_name):
-    """Remove parentheses, lowercase, strip, and singularize simple plurals."""
-    food_name = re.sub(r'\s?\(.*?\)', '', food_name).strip().lower()
-    # Handle simple plurals (e.g., tomatoes -> tomato)
-    if food_name.endswith('es') and food_name[:-2] in food_name:
-        food_name = food_name[:-2]
-    elif food_name.endswith('s') and food_name[:-1] in food_name:
-        food_name = food_name[:-1]
-    return food_name.replace(" ", "")
-
-
 def normalize(text):
     text = re.sub(r'\s?\(.*?\)', '', text).strip().lower()
     return ' '.join([stemmer.stem(word) for word in text.split()])
@@ -81,7 +70,9 @@ def get_dish_details(request):
     dish_name = request.GET.get('dish_name')
     source = request.GET.get('source')
     restaurant_id = request.GET.get('restaurant_id')
-
+    print("dish_name", dish_name)
+    print("source", source)
+    print("restaurant_id", restaurant_id)
     # Determine the collection to use based on the source
     if source == 'restaurantdishlist':
         if not restaurant_id:
@@ -98,7 +89,7 @@ def get_dish_details(request):
         dish_details = ModelData.find_one({'dish_name': dish_name}, {'_id': 0})
     else:
         return JsonResponse({'error': 'Invalid source parameter'}, status=400)
-
+    
     if not dish_details:
         return JsonResponse({'error': 'Dish not found'}, status=404)
 
@@ -281,8 +272,8 @@ def suggest_ingredient_name_function(partial_name):
     """Suggest top 10 food names based on partial input using fuzzy matching with exact match priority."""
     data = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
     partial_name_no_spaces = partial_name.replace(" ", "").strip().lower()
-    food_names = [normalize_food_name(food['food_name']) for food in data]
-    matches = process.extract(partial_name_no_spaces, food_names, limit=5, scorer=fuzz.WRatio)
+    food_names = [normalize(food['food_name']) for food in data]
+    matches = process.extract(partial_name_no_spaces, food_names, limit=10, scorer=fuzz.WRatio)
     filtered_matches = [match for match in matches if match[1] >= 65]
 
     if not filtered_matches:

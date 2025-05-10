@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     const urlParams = new URLSearchParams(window.location.search);
-    const dishName = urlParams.get('dish_name');
+    //const dishName = urlParams.get('dish_name');
+    console.log('dishName:', dishName);
     const source = urlParams.get('source');
     const restaurantId = urlParams.get('restaurant_id');
 
@@ -9,8 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             const details = data.dish_details;
-
-            console.log('Dish Details:', details);
+            // console.log('Dish Details:', details);    
 
             document.getElementById('dishImage').src = details.dish_img_url;
             document.getElementById('dishName').textContent = details.dish_name; 
