@@ -1,16 +1,16 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     const urlParams = new URLSearchParams(window.location.search);
-    //const dishName = urlParams.get('dish_name');
-    console.log('dishName:', dishName);
+    const dishName = urlParams.get('dish_name');
+    //console.log('dishName:', dishName);
     const source = urlParams.get('source');
     const restaurantId = urlParams.get('restaurant_id');
 
-    fetch(`/get_dish_details/?dish_name=${dishName}&source=${source}&restaurant_id=${restaurantId}`)
+    fetch(`/get_dish_details/?dish_name=${encodeURIComponent(dishName)}&source=${encodeURIComponent(source)}&restaurant_id=${encodeURIComponent(restaurantId)}`)
         .then(response => response.json())
         .then(data => {
             const details = data.dish_details;
-            // console.log('Dish Details:', details);    
+            console.log('Dish Details:', details);    
 
             document.getElementById('dishImage').src = details.dish_img_url;
             document.getElementById('dishName').textContent = details.dish_name; 
@@ -108,6 +108,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const dbIngredientText = document.createElement('span');
                 dbIngredientText.textContent = ingredient.db_ingredient_name || 'N/A';
                 dbIngredientText.style.flex = '1';
+                if (ingredient.db_ingredient_name === "No close match found") {
+                    dbIngredientText.style.color = 'red';
+                    dbIngredientText.style.fontWeight = 'bold';
+                }
 
                 dbIngredientLi.appendChild(dbIngredientText);
                 dbIngredientNames.appendChild(dbIngredientLi);
@@ -314,6 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const restaurantId = urlParams.get('restaurant_id');
                 const dishId = details._id;
 
+
                 if (!dishName) {
                     alert('Dish name is missing. Please check the dish details.');
                     return;
@@ -331,6 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const payload = {
                     dishId: dishId,
                     restaurant_id: restaurantId,
+                    dish_name : dishName,
                     ingredients: ingredients,
                     origin_ingredient: data.dish_details.dish_variants.normal.full.ingredients,
                     cooking_style: document.getElementById('cookingStyle').value,

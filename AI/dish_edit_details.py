@@ -70,9 +70,7 @@ def get_dish_details(request):
     dish_name = request.GET.get('dish_name')
     source = request.GET.get('source')
     restaurant_id = request.GET.get('restaurant_id')
-    print("dish_name", dish_name)
-    print("source", source)
-    print("restaurant_id", restaurant_id)
+    
     # Determine the collection to use based on the source
     if source == 'restaurantdishlist':
         if not restaurant_id:
@@ -210,16 +208,12 @@ def run_model(request):
             # Validate required fields
             restro_id = data.get('restaurant_id')
             dish_id = data.get('dishId')
+            dish_name = data.get('dish_name')
             ingredients = data.get('ingredients')
             cooking_style = data.get('cooking_style')
             origin_ingredient = data.get('origin_ingredient')
             origin_ingredient = update_origin_ingredients(ingredients, origin_ingredient)  # Update origin ingredients
 
-            if not restro_id or not dish_id or not ingredients:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Missing required fields: restro_id, dish_id, or ingredients'
-                }, status=400)
 
             # Validate ingredients structure
             for ingredient in ingredients:
@@ -228,24 +222,57 @@ def run_model(request):
                         'success': False,
                         'error': 'Each ingredient must have name, quantity, and unit'
                     }, status=400)
+            
+           
+            if restro_id:
 
-            url = 'https://production.fitshield.in/api/update-dish'
-            headers = {
-                'Content-Type': 'application/json'
-            }
-            payload = {
-                "restro_id": restro_id,
-                "dish_id": dish_id,
-                "updated_fields": {
-                    "full": {
-                        "ingredients": origin_ingredient
-                    },
-                    "cooking_style": cooking_style
+                if not dish_id or not ingredients:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Missing required fields: dish_id or ingredients'
+                    }, status=400)
+
+                url = 'https://production.fitshield.in/api/update-dish'
+                headers = {
+                    'Content-Type': 'application/json'
                 }
-            }
+                payload = {
+                    "restro_id": restro_id,
+                    "dish_id": dish_id,
+                    "updated_fields": {
+                        "full": {
+                            "ingredients": origin_ingredient
+                        },
+                        "cooking_style": cooking_style
+                    }
+                }
+
+            else:
+
+                if not ingredients:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Missing required fields: ingredients'
+                    }, status=400)
+                
+                url = "https://sandbox.fitshield.in/api/auto-update-model-dish"
+                #url = "https://production.fitshield.in/api/auto-update-model-dish"
+                headers = {
+                    'Content-Type': 'application/json'
+                }
+                payload = {
+                    "dish_name": dish_name,
+                    "updated_fields": {
+                        "full": {
+                            "ingredients": origin_ingredient
+                        },
+                        "cooking_style": cooking_style
+                    }
+                }
 
             try:
                 response = requests.put(url, headers=headers, json=payload)
+                print("Response:", response.text)
                 if response.status_code == 400:
                     print("External API returned 400:", response.json())
                 response.raise_for_status() 
