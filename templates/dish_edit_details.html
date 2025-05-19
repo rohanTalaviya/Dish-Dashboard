@@ -176,6 +176,52 @@
         ul.suggestion-box li:hover {
             background: #f0f0f0; 
         }
+        /* Custom switch for Dish Approve */
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            margin-left: 18px;
+            user-select: none;
+        }
+        .switch input[type="radio"] {
+            display: none;
+        }
+        .slider {
+            width: 42px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 24px;
+            position: relative;
+            transition: background 0.3s;
+            margin-right: 10px;
+        }
+        .slider:before {
+            content: "";
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+        .switch input[type="radio"]:checked + .slider {
+            background: #4CAF50;
+        }
+        .switch input[type="radio"]:checked + .slider:before {
+            transform: translateX(18px);
+            background: #fff;
+        }
+        .switch-label {
+            font-size: 1em;
+            color: #e0e0e0;
+            font-weight: 500;
+            margin-left: 2px;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -197,6 +243,11 @@
                     <ul id="ingredientsList"></ul>
                     <button id="addIngredient">Add Ingredient</button>
                     <button id="runModel">Run Model</button>
+                    <label class="switch">
+                        <input type="radio" id="dishApproveRadio" name="dishApproveRadio">
+                        <span class="slider"></span>
+                        <span class="switch-label">Dish Approve</span>
+                    </label>
                 </div>
                 <div>
                     <h3>DB Ingredient Names</h3>

@@ -40,7 +40,8 @@ def find_ingredient_name(partial_name, threshold=90):
         idx = db_names.index(good_matches[0][0])
         return ingredients_db_names[idx]['food_name']
 
-    return "No close match found"
+    suggestion = suggest_five_ingredient_name(partial_name)
+    return f"No match : {suggestion}"
 
 
 # Check ingredient correctness using generative AI
@@ -166,6 +167,7 @@ def update_dish_fields(request):
             if 'price' in updates:
                 updates['dish_variants.normal.full.price'] = updates.pop('price')
 
+
             # Determine the collection and update logic based on the source
             if source == 'restaurantdishlist':
                 if not restaurant_id:
@@ -255,8 +257,8 @@ def run_model(request):
                         'error': 'Missing required fields: ingredients'
                     }, status=400)
                 
-                url = "https://sandbox.fitshield.in/api/auto-update-model-dish"
-                #url = "https://production.fitshield.in/api/auto-update-model-dish"
+                #url = "https://sandbox.fitshield.in/api/auto-update-model-dish"
+                url = "https://production.fitshield.in/api/auto-update-model-dish"
                 headers = {
                     'Content-Type': 'application/json'
                 }
@@ -304,7 +306,26 @@ def suggest_ingredient_name_function(partial_name):
     filtered_matches = [match for match in matches if match[1] >= 65]
 
     if not filtered_matches:
-        return ["No close match found"]
+        return ["No match"]
+
+    top_matches = []
+    for match in filtered_matches:
+        index = food_names.index(match[0])
+        original_food_name = data[index]['food_name']
+        top_matches.append(original_food_name)
+
+    return top_matches
+
+def suggest_five_ingredient_name(partial_name):
+    """Suggest top 5 food names based on partial input using fuzzy matching with exact match priority."""
+    data = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
+    partial_name_no_spaces = partial_name.replace(" ", "").strip().lower()
+    food_names = [normalize(food['food_name']) for food in data]
+    matches = process.extract(partial_name_no_spaces, food_names, limit=5, scorer=fuzz.WRatio)
+    filtered_matches = [match for match in matches if match[1] >= 65]
+
+    if not filtered_matches:
+        return ["No match"]
 
     top_matches = []
     for match in filtered_matches:

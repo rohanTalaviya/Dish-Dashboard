@@ -51,7 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.value = ingredient.name;
-                nameInput.style.flex = '2';
+                nameInput.style.flex = '1'; // Reduced from '2' to '1'
+                nameInput.style.maxWidth = '80px'; // Add a max width for further control
                 nameInput.className = 'ingredient-name';
 
                 const quantityInput = document.createElement('input');
@@ -108,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const dbIngredientText = document.createElement('span');
                 dbIngredientText.textContent = ingredient.db_ingredient_name || 'N/A';
                 dbIngredientText.style.flex = '1';
-                if (ingredient.db_ingredient_name === "No close match found") {
+                if (ingredient.db_ingredient_name.includes("No match")) {
                     dbIngredientText.style.color = 'red';
                     dbIngredientText.style.fontWeight = 'bold';
                 }
@@ -311,6 +312,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Populate price
             document.getElementById('dishPrice').value = details.price || 0;
 
+            // Set the "Dish Approve" radio button based on is_verified
+            const dishApproveRadio = document.getElementById('dishApproveRadio');
+            if (details.is_verified === true) {
+                dishApproveRadio.checked = true;
+            } else {
+                dishApproveRadio.checked = false;
+            }
+
             // Add event listener for the "Run Model" button
             document.getElementById('runModel').addEventListener('click', function() {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -382,7 +391,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 nameInput.type = 'text';
                 nameInput.value = name;
                 nameInput.placeholder = 'Name';
-                nameInput.style.flex = '2';
+                nameInput.style.flex = '1'; // Reduced from '2' to '1'
+                nameInput.style.maxWidth = '120px'; // Add a max width for further control
                 nameInput.className = 'ingredient-name';
 
                 const suggestionBox = document.createElement('ul');
@@ -522,6 +532,7 @@ document.getElementById('updateAllFields').addEventListener('click', function() 
         }));
 
     const updates = {
+        'dish_description': document.getElementById('dishDescription').value,
         'cuisine_category.continental_region': document.getElementById('continentalRegion').value,
         'cuisine_category.specific_cuisine': document.getElementById('specificCuisine').value,
         'cuisine_category.subcategory': document.getElementById('subcategory').value,
@@ -537,6 +548,11 @@ document.getElementById('updateAllFields').addEventListener('click', function() 
         'toppings': toppings,
         'price': parseFloat(document.getElementById('dishPrice').value) || 0,
     };
+
+    // Add is_verified if radio is checked
+    if (document.getElementById('dishApproveRadio').checked) {
+        updates['is_verified'] = true;
+    }
 
     const payload = {
         dish_name: dishName, // Ensure dish_name is included in the payload
@@ -626,7 +642,8 @@ function createIngredientRow(name = '', quantity = '', unit = '', description = 
     nameInput.type = 'text';
     nameInput.value = name;
     nameInput.placeholder = 'Name';
-    nameInput.style.flex = '2';
+    nameInput.style.flex = '1'; // Reduced from '2' to '1'
+    nameInput.style.maxWidth = '120px'; // Add a max width for further control
     nameInput.className = 'ingredient-name';
 
     const suggestionBox = document.createElement('ul');
