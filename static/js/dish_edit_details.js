@@ -642,7 +642,7 @@ function createIngredientRow(name = '', quantity = '', unit = '', description = 
     nameInput.type = 'text';
     nameInput.value = name;
     nameInput.placeholder = 'Name';
-    nameInput.style.flex = '1'; // Reduced from '2' to '1'
+    nameInput.style.flex = '2'; // Reduced from '2' to '1'
     nameInput.style.maxWidth = '120px'; // Add a max width for further control
     nameInput.className = 'ingredient-name';
 
@@ -666,15 +666,15 @@ function createIngredientRow(name = '', quantity = '', unit = '', description = 
                         const suggestionItem = document.createElement('li');
                         suggestionItem.textContent = suggestion;
                         suggestionItem.style.cursor = 'pointer';
-                        suggestionItem.style.padding = '8px 12px'; // Improved padding
-                        suggestionItem.style.borderBottom = '1px solid #ddd'; // Add separator
-                        suggestionItem.style.backgroundColor = '#fff'; // White background
-                        suggestionItem.style.color = '#333'; // Dark text
+                        suggestionItem.style.padding = '8px 12px'; 
+                        suggestionItem.style.borderBottom = '1px solid #ddd'; 
+                        suggestionItem.style.backgroundColor = '#fff'; 
+                        suggestionItem.style.color = '#333'; 
                         suggestionItem.addEventListener('mouseover', () => {
-                            suggestionItem.style.backgroundColor = '#f0f0f0'; // Highlight on hover
+                            suggestionItem.style.backgroundColor = '#f0f0f0';
                         });
                         suggestionItem.addEventListener('mouseout', () => {
-                            suggestionItem.style.backgroundColor = '#fff'; // Reset background
+                            suggestionItem.style.backgroundColor = '#fff'; 
                         });
                         suggestionItem.addEventListener('click', function () {
                             nameInput.value = suggestion;

@@ -108,6 +108,23 @@ def generate_ingredient_id(ingredient_name):
     ingredient_id = f"{ingredient_name.replace(' ', '')}_{random_digits}" 
     return ingredient_id
 
+
+def custom_round(input_str: str) -> str:
+    number = float(input_str)
+    
+    if number < 5:
+        result = float(int(number) + 1)
+    else:
+        remainder = number % 5
+        base = number - remainder
+        if remainder >= 2.5:
+            result = base + 5
+        else:
+            result = base
+            
+    return f"{result:.1f}"
+
+
 def update_origin_ingredients(ingredients, origin_ingredient):
     updated_origin = []
 
@@ -120,7 +137,7 @@ def update_origin_ingredients(ingredients, origin_ingredient):
             updated = match.copy()
             updated.update({
                 "name": ing['name'],
-                "quantity": ing['quantity'],
+                "quantity": custom_round(ing['quantity']),
                 "unit": ing['unit'],
                 "description": ing['description']
             })
@@ -132,7 +149,7 @@ def update_origin_ingredients(ingredients, origin_ingredient):
             updated_origin.append({
                 "id": generate_ingredient_id(ing['name']),
                 "name": ing['name'],
-                "quantity": ing['quantity'],
+                "quantity": custom_round(ing['quantity']),
                 "unit": ing['unit'],
                 "description": ing['description'],
                 "is_swappable": False,
