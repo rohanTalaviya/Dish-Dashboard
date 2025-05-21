@@ -25,7 +25,7 @@
                     const dishList = document.getElementById('dishList');
                     data.data_list.forEach(dish => {
                         const li = document.createElement('li');
-                        li.innerHTML = `<a href="/dish_edit_details.html?dish_name=${dish['dish_name']}&source=modeldatalist">${dish['dish_name']}</a>`;
+                        li.innerHTML = `<a href="/dish_edit_details.html?dish_name=${encodeURIComponent(dish['dish_name'])}&source=modeldatalist">${dish['dish_name']}</a>`;
                         dishList.appendChild(li);
                     });
                 });
