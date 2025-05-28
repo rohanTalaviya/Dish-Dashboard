@@ -109,21 +109,6 @@ def generate_ingredient_id(ingredient_name):
     return ingredient_id
 
 
-def custom_round(input_str: str) -> str:
-    number = float(input_str)
-    
-    if number < 5:
-        result = float(int(number) + 1)
-    else:
-        remainder = number % 5
-        base = number - remainder
-        if remainder >= 2.5:
-            result = base + 5
-        else:
-            result = base
-            
-    return f"{result:.1f}"
-
 # def custom_round(input_str: str) -> str:
 #     number = float(input_str)
     
@@ -137,7 +122,22 @@ def custom_round(input_str: str) -> str:
 #         else:
 #             result = base
             
-#     return input_str
+#     return f"{result:.1f}"
+
+def custom_round(input_str: str) -> str:
+    number = float(input_str)
+    
+    if number < 5:
+        result = float(int(number) + 1)
+    else:
+        remainder = number % 5
+        base = number - remainder
+        if remainder >= 2.5:
+            result = base + 5
+        else:
+            result = base
+            
+    return input_str
 
 
 def update_origin_ingredients(ingredients, origin_ingredient):
