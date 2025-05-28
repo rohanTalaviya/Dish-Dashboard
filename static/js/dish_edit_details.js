@@ -391,8 +391,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 nameInput.type = 'text';
                 nameInput.value = name;
                 nameInput.placeholder = 'Name';
-                nameInput.style.flex = '1'; // Reduced from '2' to '1'
-                nameInput.style.maxWidth = '120px'; // Add a max width for further control
+                nameInput.style.flex = '2'; 
+                nameInput.style.maxWidth = '200px';
                 nameInput.className = 'ingredient-name';
 
                 const suggestionBox = document.createElement('ul');
@@ -642,8 +642,7 @@ function createIngredientRow(name = '', quantity = '', unit = '', description = 
     nameInput.type = 'text';
     nameInput.value = name;
     nameInput.placeholder = 'Name';
-    nameInput.style.flex = '2'; // Reduced from '2' to '1'
-    nameInput.style.maxWidth = '120px'; // Add a max width for further control
+    nameInput.style.flex = '2';
     nameInput.className = 'ingredient-name';
 
     const suggestionBox = document.createElement('ul');
