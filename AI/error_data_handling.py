@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from django.shortcuts import render
 
 # MongoDB connection
-MONGO_URI = "mongodb://Kishan:KishankFitshield@ec2-13-233-104-209.ap-south-1.compute.amazonaws.com:27017/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
+MONGO_URI = "mongodb://Kishan:KishankFitshield@13.235.142.65:27017/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
 client = MongoClient(MONGO_URI)
 db = client["Fitshield"]
 ErrorDishData = db["ErrorDishData"]
