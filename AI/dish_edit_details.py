@@ -273,6 +273,7 @@ def run_model(request):
                 payload = {
                     "restro_id": restro_id,
                     "dish_id": dish_id,
+                    "is_admin": True,
                     "updated_fields": {
                         "full": {
                             "ingredients": origin_ingredient
