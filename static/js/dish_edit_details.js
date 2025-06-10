@@ -509,7 +509,42 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('An error occurred while fetching dish details.');
         });
 
+    // Add event listener for the "Verify Data" button INSIDE DOMContentLoaded
+    document.getElementById('verifyData').addEventListener('click', function () {
+        console.log('Verify Data button clicked');
+        const urlParams = new URLSearchParams(window.location.search);
+        const dishName = document.getElementById('dishName').textContent.trim();
+        const source = urlParams.get('source');
+        const restaurantId = urlParams.get('restaurant_id');
+        const resultDiv = document.getElementById('verifyDataResult');
+        resultDiv.textContent = 'Verifying...';
+
+        fetch(`/verify_dish_data/?dish_name=${encodeURIComponent(dishName)}&source=${encodeURIComponent(source)}&restaurant_id=${encodeURIComponent(restaurantId)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Format the comparison result as HTML
+                    let html = '<b>Nutrient Comparison:</b><br><table style="width:100%;color:#fff;"><tr><th>Nutrient</th><th>System</th><th>Nutritionix</th><th>Difference</th></tr>';
+                    data.comparison.forEach(row => {
+                        html += `<tr>
+                            <td>${row.nutrient}</td>
+                            <td>${row.system_value} ${row.unit}</td>
+                            <td>${row.nutritionix_value} ${row.unit}</td>
+                            <td>${row.difference} ${row.unit}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.textContent = data.error || 'Verification failed.';
+                }
+            })
+            .catch(err => {
+                resultDiv.textContent = 'Error verifying data.';
+            });
     });
+
+});
 
 document.getElementById('updateAllFields').addEventListener('click', function() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -738,3 +773,36 @@ function createIngredientRow(name = '', quantity = '', unit = '', description = 
     ingredientLi.appendChild(removeButton);
     document.getElementById('ingredientsList').appendChild(ingredientLi);
 }
+
+document.getElementById('verifyData').addEventListener('click', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dishName = document.getElementById('dishName').textContent.trim();
+    const source = urlParams.get('source');
+    const restaurantId = urlParams.get('restaurant_id');
+    const resultDiv = document.getElementById('verifyDataResult');
+    resultDiv.textContent = 'Verifying...';
+
+    fetch(`/verify_dish_data/?dish_name=${encodeURIComponent(dishName)}&source=${encodeURIComponent(source)}&restaurant_id=${encodeURIComponent(restaurantId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Format the comparison result as HTML
+                let html = '<b>Nutrient Comparison:</b><br><table style="width:100%;color:#fff;"><tr><th>Nutrient</th><th>System</th><th>Nutritionix</th><th>Difference</th></tr>';
+                data.comparison.forEach(row => {
+                    html += `<tr>
+                        <td>${row.nutrient}</td>
+                        <td>${row.system_value} ${row.unit}</td>
+                        <td>${row.nutritionix_value} ${row.unit}</td>
+                        <td>${row.difference} ${row.unit}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+                resultDiv.innerHTML = html;
+            } else {
+                resultDiv.textContent = data.error || 'Verification failed.';
+            }
+        })
+        .catch(err => {
+            resultDiv.textContent = 'Error verifying data.';
+        });
+});

@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
 from pymongo import MongoClient
 from rapidfuzz import process, fuzz
 import google.generativeai as genai
@@ -22,6 +23,9 @@ RestaurantMenuData = db["RestaurantMenuData"]
 nutrients_collection = db["Nutrients"]
 ingredients_db_names = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
 
+# Nutritionix API Credentials
+APP_ID = "9600bdb1"
+API_KEY = "67af5f3486c275225d14465d4cbb5ecc"
 
 def normalize(text):
     text = re.sub(r'\s?\(.*?\)', '', text).strip().lower()
@@ -367,3 +371,144 @@ def suggest_five_ingredient_name(partial_name):
         top_matches.append(original_food_name)
 
     return top_matches
+
+
+
+# === Utility Functions ===
+
+def get_dish_data(collection, target_id, dish_name):
+    result = collection.find_one(
+        {
+            "_id": target_id,
+            "menu.dish_name": dish_name
+        },
+        {
+            "menu.$": 1,
+            "_id": 0
+        }
+    )
+
+    if result and "menu" in result:
+        try:
+            dish_data = result["menu"][0]["dish_variants"]["normal"]["full"]
+            ingredients = dish_data["ingredients"]
+            nutrients = dish_data["nutrients"]
+            formatted_string = ', '.join(f"{item['quantity']} {item['unit']} {item['name']}" for item in ingredients)
+            return formatted_string, nutrients
+        except (KeyError, IndexError, TypeError) as e:
+            print("Error extracting dish data:", e)
+            return None, None
+    return None, None
+
+
+def get_nutritionix_summary(query):
+    url = "https://trackapi.nutritionix.com/v2/natural/nutrients"
+    headers = {
+        "x-app-id": APP_ID,
+        "x-app-key": API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, headers=headers, json={"query": query})
+
+    if response.status_code != 200:
+        return {"error": f"{response.status_code} - {response.text}"}
+
+    result = response.json()
+    total_nutrients = {}
+
+    for food in result.get("foods", []):
+        for nutrient, value in food.items():
+            if nutrient.startswith("nf_") and isinstance(value, (int, float)):
+                total_nutrients[nutrient] = total_nutrients.get(nutrient, 0) + value
+
+    return total_nutrients
+
+
+def compare_nutrients(system_data, nutritionix_data):
+    nutrient_map = {
+        "PROTCNT": "nf_protein",
+        "FATCE": "nf_total_fat",
+        "CHOAVLDF": "nf_total_carbohydrate",
+        "FIBTG": "nf_dietary_fiber",
+        "TOTALFREESUGARS": "nf_sugars",
+        "CHOLC": "nf_cholesterol",
+        "NA": "nf_sodium"
+    }
+
+    system_dict = {item["name"]: item for item in system_data}
+
+    print("\n🔍 Nutrient Comparison (System vs Nutritionix):\n")
+    for sys_key, nutrx_key in nutrient_map.items():
+        system_value = system_dict.get(sys_key, {}).get("quantity", 0)
+        nutritionix_value = nutritionix_data.get(nutrx_key, 0)
+        unit = system_dict.get(sys_key, {}).get("unit", "")
+        difference = round(system_value - nutritionix_value, 2)
+
+        print(f"{nutrx_key}:")
+        print(f"  - System:      {system_value} {unit}")
+        print(f"  - Nutritionix: {nutritionix_value} {unit}")
+        print(f"  - Difference:  {difference:+} {unit}\n")
+
+
+@require_GET
+def verify_dish_data(request):
+    dish_name = request.GET.get('dish_name')
+    source = request.GET.get('source')
+    restaurant_id = request.GET.get('restaurant_id')
+
+    # Determine the collection to use based on the source
+    if source == 'restaurantdishlist':
+        if not restaurant_id:
+            return JsonResponse({'success': False, 'error': 'restaurant_id is required for restaurantdishlist source'})
+        dish_data, dish_nutrients = get_dish_data(RestaurantMenuData, restaurant_id, dish_name)
+    elif source == 'restaurantmodeldata':
+        dish = RestroModelData.find_one({'dish_name': dish_name}, {'_id': 0})
+        if dish:
+            dish_data = ', '.join(f"{item['quantity']} {item['unit']} {item['name']}" for item in dish['dish_variants']['normal']['full']['ingredients'])
+            dish_nutrients = dish['dish_variants']['normal']['full']['nutrients']
+        else:
+            dish_data, dish_nutrients = None, None
+    elif source == 'modeldatalist':
+        dish = ModelData.find_one({'dish_name': dish_name}, {'_id': 0})
+        if dish:
+            dish_data = ', '.join(f"{item['quantity']} {item['unit']} {item['name']}" for item in dish['dish_variants']['normal']['full']['ingredients'])
+            dish_nutrients = dish['dish_variants']['normal']['full']['nutrients']
+        else:
+            dish_data, dish_nutrients = None, None
+    else:
+        return JsonResponse({'success': False, 'error': 'Invalid source parameter'})
+
+    if not dish_data or not dish_nutrients:
+        return JsonResponse({'success': False, 'error': 'Dish not found'})
+
+    nutritionix_data = get_nutritionix_summary(dish_data)
+    if "error" in nutritionix_data:
+        return JsonResponse({'success': False, 'error': nutritionix_data["error"]})
+
+    # Prepare comparison result as a list of dicts
+    nutrient_map = {
+        "PROTCNT": "nf_protein",
+        "FATCE": "nf_total_fat",
+        "CHOAVLDF": "nf_total_carbohydrate",
+        "FIBTG": "nf_dietary_fiber",
+        "TOTALFREESUGARS": "nf_sugars",
+        "CHOLC": "nf_cholesterol",
+        "NA": "nf_sodium"
+    }
+    system_dict = {item["name"]: item for item in dish_nutrients}
+    comparison = []
+    for sys_key, nutrx_key in nutrient_map.items():
+        system_value = system_dict.get(sys_key, {}).get("quantity", 0)
+        nutritionix_value = nutritionix_data.get(nutrx_key, 0)
+        unit = system_dict.get(sys_key, {}).get("unit", "")
+        difference = round(system_value - nutritionix_value, 2)
+        comparison.append({
+            "nutrient": nutrx_key,
+            "system_value": system_value,
+            "nutritionix_value": nutritionix_value,
+            "difference": difference,
+            "unit": unit
+        })
+
+    return JsonResponse({'success': True, 'comparison': comparison})

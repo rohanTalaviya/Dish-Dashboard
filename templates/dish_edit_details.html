@@ -243,11 +243,14 @@
                     <ul id="ingredientsList"></ul>
                     <button id="addIngredient">Add Ingredient</button>
                     <button id="runModel">Run Model</button>
+                    <button id="verifyData">Verify Data</button>
                     <label class="switch">
                         <input type="radio" id="dishApproveRadio" name="dishApproveRadio">
                         <span class="slider"></span>
                         <span class="switch-label">Dish Approve</span>
                     </label>
+                    <!-- Move the result div here, under the buttons, inside the card -->
+                    <div id="verifyDataResult" style="margin-top:15px; color:#FFD700;"></div>
                 </div>
                 <div>
                     <h3>DB Ingredient Names</h3>
@@ -385,6 +388,7 @@
                 Update All Fields
             </button>
         </div>
+
     </div>
     <script src="/static/js/dish_edit_details.js"></script> <!-- Ensure this script is linked -->
 </body>
