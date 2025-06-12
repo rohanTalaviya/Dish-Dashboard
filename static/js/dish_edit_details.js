@@ -2,9 +2,46 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const urlParams = new URLSearchParams(window.location.search);
     const dishName = urlParams.get('dish_name');
-    //console.log('dishName:', dishName);
     const source = urlParams.get('source');
     const restaurantId = urlParams.get('restaurant_id');
+
+    if (restaurantId) {
+        document.getElementById('updateMainData').style.display = 'inline-block';
+    }
+
+    // Optional: Add click handler for the new button
+    document.getElementById('updateMainData').addEventListener('click', async function() {
+        const dishName = document.getElementById('dishName').textContent.trim();
+        const ingredients = Array.from(document.querySelectorAll('#ingredientsList li')).map(li => ({
+            name: li.querySelector('.ingredient-name')?.value || '',
+            quantity: li.querySelector('.ingredient-quantity')?.value || '',
+            unit: li.querySelector('.ingredient-unit')?.value || '',
+            description: li.querySelector('.ingredient-description')?.value || ''
+        }));
+        const cookingStyle = document.getElementById('cookingStyle').value;
+
+        const payload = {
+            dish_name: dishName,
+            ingredients: ingredients,
+            cooking_style: cookingStyle
+        };
+
+        try {
+            const response = await fetch('/update_main_data/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                alert('Main data updated successfully!');
+            } else {
+                alert('Failed: ' + (result.error || JSON.stringify(result)));
+            }
+        } catch (error) {
+            alert('Error: ' + error);
+        }
+    });
 
     fetch(`/get_dish_details/?dish_name=${encodeURIComponent(dishName)}&source=${encodeURIComponent(source)}&restaurant_id=${encodeURIComponent(restaurantId)}`)
         .then(response => response.json())
@@ -331,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!dishName) {
                     alert('Dish name is missing. Please check the dish details.');
                     return;
-                }
+                }                
 
                 // Collect ingredients data
                 const ingredients = Array.from(document.getElementById('ingredientsList').children).map(ingredientLi => ({
@@ -519,29 +556,53 @@ document.addEventListener('DOMContentLoaded', function() {
         const resultDiv = document.getElementById('verifyDataResult');
         resultDiv.textContent = 'Verifying...';
 
-        fetch(`/verify_dish_data/?dish_name=${encodeURIComponent(dishName)}&source=${encodeURIComponent(source)}&restaurant_id=${encodeURIComponent(restaurantId)}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Format the comparison result as HTML
-                    let html = '<b>Nutrient Comparison:</b><br><table style="width:100%;color:#fff;"><tr><th>Nutrient</th><th>System</th><th>Nutritionix</th><th>Difference</th></tr>';
-                    data.comparison.forEach(row => {
-                        html += `<tr>
-                            <td>${row.nutrient}</td>
-                            <td>${row.system_value} ${row.unit}</td>
-                            <td>${row.nutritionix_value} ${row.unit}</td>
-                            <td>${row.difference} ${row.unit}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    resultDiv.innerHTML = html;
-                } else {
-                    resultDiv.textContent = data.error || 'Verification failed.';
-                }
-            })
-            .catch(err => {
-                resultDiv.textContent = 'Error verifying data.';
-            });
+    fetch(`/verify_dish_data/?dish_name=${encodeURIComponent(dishName)}&source=${encodeURIComponent(source)}&restaurant_id=${encodeURIComponent(restaurantId)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let html = `
+                <div style="font-family:Arial,sans-serif; color:#f0f0f0;">
+                    <h3 style="margin-bottom:10px; color:#00c6ff;">Nutrient Comparison</h3>
+                    <table style="width:100%; border-collapse:collapse; background-color:#1e1e1e; border:1px solid #333;">
+                        <thead>
+                            <tr style="background-color:#2a2a2a;">
+                                <th style="padding:10px; border-bottom:1px solid #444; text-align:left;">Nutrient</th>
+                                <th style="padding:10px; border-bottom:1px solid #444;">System</th>
+                                <th style="padding:10px; border-bottom:1px solid #444;">Nutritionix</th>
+                                <th style="padding:10px; border-bottom:1px solid #444;">Difference</th>
+                                <th style="padding:10px; border-bottom:1px solid #444;">% Mismatch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                data.comparison.forEach(row => {
+                    html += `
+                        <tr style="border-bottom:1px solid #333;">
+                            <td style="padding:8px 10px;">${row.nutrient}</td>
+                            <td style="padding:8px 10px; text-align:center;">${row.system_value} ${row.unit}</td>
+                            <td style="padding:8px 10px; text-align:center;">${row.nutritionix_value} ${row.unit}</td>
+                            <td style="padding:8px 10px; text-align:center;">${row.difference} ${row.unit}</td>
+                            <td style="padding:8px 10px; text-align:center;">${row.percent_difference !== null ? row.percent_difference + '%' : 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                html += `
+                        </tbody>
+                    </table>
+                    <div style="margin-top:15px; color:#FFD700;">
+                        <b>Average % Mismatch :</b>
+                        ${data.average_percent_mismatch !== null ? data.average_percent_mismatch + '%' : 'N/A'}
+                    </div>
+                </div>
+                `;
+                resultDiv.innerHTML = html;
+            } else {
+                resultDiv.textContent = data.error || 'Verification failed.';
+            }
+        })
+        .catch(err => {
+            resultDiv.textContent = 'Error verifying data.';
+        });
     });
 
 });
@@ -786,14 +847,16 @@ document.getElementById('verifyData').addEventListener('click', function () {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Format the comparison result as HTML
-                let html = '<b>Nutrient Comparison:</b><br><table style="width:100%;color:#fff;"><tr><th>Nutrient</th><th>System</th><th>Nutritionix</th><th>Difference</th></tr>';
+                let html = '<b>Nutrient Comparison:</b><br>';
+                html += '<table style="width:100%;color:#fff;">';
+                html += '<tr><th>Nutrient</th><th>System</th><th>Nutritionix</th><th>Difference</th><th>% Mismatch</th></tr>';
                 data.comparison.forEach(row => {
                     html += `<tr>
                         <td>${row.nutrient}</td>
                         <td>${row.system_value} ${row.unit}</td>
                         <td>${row.nutritionix_value} ${row.unit}</td>
                         <td>${row.difference} ${row.unit}</td>
+                        <td>${row.percent_difference !== null ? row.percent_difference + '%' : 'N/A'}</td>
                     </tr>`;
                 });
                 html += '</table>';

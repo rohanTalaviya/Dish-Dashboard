@@ -14,7 +14,7 @@ stemmer = PorterStemmer()
 
 
 # MongoDB connection
-MONGO_URI = "mongodb://Kishan:KishankFitshield@13.235.142.65:27017/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
+MONGO_URI = "mongodb://fitshield_ro:F!t%24h!3lD_Pr0D_ro@ec2-13-204-93-167.ap-south-1.compute.amazonaws.com:17018/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
 client = MongoClient(MONGO_URI)
 db = client["Fitshield"]
 ModelData = db["ModelData"]
@@ -263,7 +263,6 @@ def run_model(request):
             
            
             if restro_id:
-
                 if not dish_id or not ingredients:
                     return JsonResponse({
                         'success': False,
@@ -274,6 +273,7 @@ def run_model(request):
                 headers = {
                     'Content-Type': 'application/json'
                 }
+                headers['Authorization'] = f"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZml0c2hpZWxkX3VzZXJfMTQ1ZGUwODJlZjdkNDJmZSIsInNvdXJjZSI6ImFwcCIsImlhdCI6MTc0OTIwOTg3OSwiZXhwIjoxNzUxODAxODc5fQ.Ky4LR3MBQC8UfQmKeNelkFgPmzEX4bFJG9n4vVG2dk0"
                 payload = {
                     "restro_id": restro_id,
                     "dish_id": dish_id,
@@ -323,6 +323,35 @@ def run_model(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def update_main_data(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            dish_name = data.get('dish_name')
+            ingredients = data.get('ingredients', [])
+            cooking_style = data.get('cooking_style', '')
+
+            # Prepare payload for external API
+            payload = {
+                "dish_name": dish_name,
+                "updated_fields": {
+                    "full": {
+                        "ingredients": ingredients
+                    },
+                    "cooking_style": cooking_style
+                }
+            }
+            url = "https://production.fitshield.in/api/auto-update-model-dish"
+            headers = {'Content-Type': 'application/json'}
+
+            response = requests.put(url, headers=headers, json=payload)
+            return JsonResponse(response.json(), status=response.status_code)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
 
 @csrf_exempt
 def suggest_ingredient_name(request):
@@ -425,32 +454,6 @@ def get_nutritionix_summary(query):
     return total_nutrients
 
 
-def compare_nutrients(system_data, nutritionix_data):
-    nutrient_map = {
-        "PROTCNT": "nf_protein",
-        "FATCE": "nf_total_fat",
-        "CHOAVLDF": "nf_total_carbohydrate",
-        "FIBTG": "nf_dietary_fiber",
-        "TOTALFREESUGARS": "nf_sugars",
-        "CHOLC": "nf_cholesterol",
-        "NA": "nf_sodium"
-    }
-
-    system_dict = {item["name"]: item for item in system_data}
-
-    print("\n🔍 Nutrient Comparison (System vs Nutritionix):\n")
-    for sys_key, nutrx_key in nutrient_map.items():
-        system_value = system_dict.get(sys_key, {}).get("quantity", 0)
-        nutritionix_value = nutritionix_data.get(nutrx_key, 0)
-        unit = system_dict.get(sys_key, {}).get("unit", "")
-        difference = round(system_value - nutritionix_value, 2)
-
-        print(f"{nutrx_key}:")
-        print(f"  - System:      {system_value} {unit}")
-        print(f"  - Nutritionix: {nutritionix_value} {unit}")
-        print(f"  - Difference:  {difference:+} {unit}\n")
-
-
 @require_GET
 def verify_dish_data(request):
     dish_name = request.GET.get('dish_name')
@@ -488,6 +491,7 @@ def verify_dish_data(request):
 
     # Prepare comparison result as a list of dicts
     nutrient_map = {
+        "ENERC":"nf_calories",
         "PROTCNT": "nf_protein",
         "FATCE": "nf_total_fat",
         "CHOAVLDF": "nf_total_carbohydrate",
@@ -498,17 +502,34 @@ def verify_dish_data(request):
     }
     system_dict = {item["name"]: item for item in dish_nutrients}
     comparison = []
+    percent_diffs = []
+    avg_nutrients = ["ENERC", "PROTCNT", "FATCE", "CHOAVLDF", "FIBTG"]
     for sys_key, nutrx_key in nutrient_map.items():
         system_value = system_dict.get(sys_key, {}).get("quantity", 0)
         nutritionix_value = nutritionix_data.get(nutrx_key, 0)
         unit = system_dict.get(sys_key, {}).get("unit", "")
         difference = round(system_value - nutritionix_value, 2)
+
+        # Avoid division by zero for percentage difference
+        if nutritionix_value != 0:
+            percent_diff = round((difference / nutritionix_value) * 100, 2)
+        else:
+            percent_diff = None  # or set to 0, or a string like "N/A"
+
+        # Collect percent_diff for average if in avg_nutrients and not None
+        if sys_key in avg_nutrients and percent_diff is not None:
+            percent_diffs.append(abs(percent_diff))
+
         comparison.append({
-            "nutrient": nutrx_key,
+            "nutrient": sys_key,
             "system_value": system_value,
             "nutritionix_value": nutritionix_value,
             "difference": difference,
+            "percent_difference": percent_diff,
             "unit": unit
         })
 
-    return JsonResponse({'success': True, 'comparison': comparison})
+    # Calculate average percent mismatch
+    avg_percent_mismatch = round(sum(percent_diffs) / len(percent_diffs), 2) if percent_diffs else None
+
+    return JsonResponse({'success': True, 'comparison': comparison, 'average_percent_mismatch': avg_percent_mismatch})

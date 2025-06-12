@@ -8,6 +8,7 @@ from AI.dish_edit_details import get_dish_details, update_dish_fields, run_model
 from AI.restaurant_list import get_restaurant_list, get_restaurant_dish_list, get_dish_names
 from AI.error_data_handling import get_error_model_dish_list
 from AI.modeldata import get_model_dish_list
+from AI.dish_edit_details import update_main_data
 
 
 urlpatterns = [
@@ -33,4 +34,5 @@ urlpatterns = [
     path('suggest_ingredient_name/', suggest_ingredient_name, name='suggest_ingredient_name'),
     path('verify_dish_data/', verify_dish_data, name='verify_dish_data'),
     path('verification_dish_data.html', TemplateView.as_view(template_name="verification_dish_data.html"), name='verification_dish_data'),
+    path('update_main_data/', update_main_data, name='update_main_data'),
 ]
