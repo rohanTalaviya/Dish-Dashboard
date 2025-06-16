@@ -1,22 +1,19 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
-from pymongo import MongoClient
-from rapidfuzz import process, fuzz
-import google.generativeai as genai
 import json
 import re
 import requests
 import uuid
-
+import copy
+from AI.connection import db
+from django.http import JsonResponse
+from rapidfuzz import process, fuzz
+import google.generativeai as genai
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
 from nltk.stem import PorterStemmer
+
 stemmer = PorterStemmer()
 
-
 # MongoDB connection
-MONGO_URI = "mongodb://fitshield_ro:F!t%24h!3lD_Pr0D_ro@ec2-13-204-93-167.ap-south-1.compute.amazonaws.com:17018/?authMechanism=SCRAM-SHA-256&authSource=Fitshield"
-client = MongoClient(MONGO_URI)
-db = client["Fitshield"]
 ModelData = db["ModelData"]
 RestroModelData = db["RestroModelData"]
 RestaurantMenuData = db["RestaurantMenuData"]
@@ -24,13 +21,61 @@ nutrients_collection = db["Nutrients"]
 ingredients_db_names = list(nutrients_collection.find({}, {'_id': 0, 'food_name': 1}))
 
 # Nutritionix API Credentials
-APP_ID = "9600bdb1"
-API_KEY = "67af5f3486c275225d14465d4cbb5ecc"
+APP_ID = "c5c1581f"
+API_KEY = "cd6145d5b423027bff17ea8940dd3df7"
 
+aa_text="""You are a culinary AI assistant that compares two ingredient lists of the same dish — one from a homemade (cousin) version and one from a restaurant version.
+
+You will receive structured JSON input with two keys:
+
+"homemade_ingredients": List of ingredients used in the homemade version.
+
+"restaurant_ingredients": List of ingredients used in the restaurant version.
+
+Your task is to:
+
+1. Identify ingredient alternatives
+Match ingredients across the two lists that may not be identical in name but are functional substitutes.
+
+Consider culinary role (fat, sweetener, spice, etc.), taste, texture, or usage.
+
+Examples: "ghee" ↔ "butter", "honey" ↔ "sugar", "green peas" ↔ "peas", "capsicum" ↔ "bell pepper".
+
+Ignore ingredients that are exact string matches.
+
+2. Identify missing ingredients
+List ingredients that appear in one version and have no equivalent in the other.
+
+Do not list exact matches or alternatives here.
+
+✅ Output format (always return this structure):
+{
+  "alternatives": [
+    {
+      "homemade": "ghee",
+      "restaurant": "butter"
+    }
+  ],
+  "missing_in_homemade": ["carrot"],
+  "missing_in_restaurant": ["cauliflower"]
+}
+⚠️ Notes:
+
+Do not include exact matches in alternatives.
+
+Do not include ingredients that are already part of alternatives in the missing lists.
+
+Do not explain your reasoning — return only the JSON output.
+
+Treat ingredient pairs as valid alternatives if they represent the same core item but differ in form, preparation state, or description — e.g., “potato” vs “boiled potatoes”, “red chilli” vs “red chillies”, “onion” vs “spring onion”, "Garam masala" vs "Dish masala".
+"""
+
+dish_details = []
+
+# Normalize text for fuzzy matching
 def normalize(text):
     text = re.sub(r'\s?\(.*?\)', '', text).strip().lower()
     return ' '.join([stemmer.stem(word) for word in text.split()])
-
 
 def find_ingredient_name(partial_name, threshold=90):
     user_input = normalize(partial_name)
@@ -46,7 +91,6 @@ def find_ingredient_name(partial_name, threshold=90):
 
     suggestion = suggest_five_ingredient_name(partial_name)
     return f"No match : {suggestion}"
-
 
 # Check ingredient correctness using generative AI
 def check_ingredient(ingredient_name, db_ingredient_name):
@@ -67,8 +111,6 @@ def check_ingredient(ingredient_name, db_ingredient_name):
     response = chat_session.send_message(f"Original: {ingredient_name}, Found: {db_ingredient_name}")
     response_text = response.text.strip().lower()
     return response_text if response_text in ["true", "false"] else "false"
-
-dish_details = []
 
 # Get dish details and validate ingredients
 def get_dish_details(request):
@@ -112,22 +154,6 @@ def generate_ingredient_id(ingredient_name):
     ingredient_id = f"{ingredient_name.replace(' ', '')}_{random_digits}" 
     return ingredient_id
 
-
-# def custom_round(input_str: str) -> str:
-#     number = float(input_str)
-    
-#     if number < 5:
-#         result = float(int(number) + 1)
-#     else:
-#         remainder = number % 5
-#         base = number - remainder
-#         if remainder >= 2.5:
-#             result = base + 5
-#         else:
-#             result = base
-            
-#     return f"{result:.1f}"
-
 def custom_round(input_str: str) -> str:
     number = float(input_str)
     
@@ -142,7 +168,6 @@ def custom_round(input_str: str) -> str:
             result = base
             
     return input_str
-
 
 def update_origin_ingredients(ingredients, origin_ingredient):
     updated_origin = []
@@ -294,8 +319,8 @@ def run_model(request):
                         'error': 'Missing required fields: ingredients'
                     }, status=400)
                 
-                #url = "https://sandbox.fitshield.in/api/auto-update-model-dish"
-                url = "https://production.fitshield.in/api/auto-update-model-dish"
+                url = "https://sandbox.fitshield.in/api/auto-update-model-dish"
+                #url = "https://production.fitshield.in/api/auto-update-model-dish"
                 headers = {
                     'Content-Type': 'application/json'
                 }
@@ -324,6 +349,8 @@ def run_model(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
+# === Suggest Ingredient Name ===
+
 @csrf_exempt
 def update_main_data(request):
     if request.method == 'POST':
@@ -332,18 +359,37 @@ def update_main_data(request):
             dish_name = data.get('dish_name')
             ingredients = data.get('ingredients', [])
             cooking_style = data.get('cooking_style', '')
+            model_data_dish = ModelData.find_one({'dish_name': dish_name})
+
+            # Your main data
+            model_ingredients = model_data_dish["dish_variants"]["normal"]["full"]["ingredients"]
+            # Someone else's data
+            restaurant_ingredients = ingredients
+
+            # Step 1: Get Gemini's suggestion
+            gemini_output = generate_replacements(model_ingredients, restaurant_ingredients)
+
+            # Step 2: Add replacements to your data only
+            updated_model_ingredients = add_potential_replacements_to_model(model_ingredients, gemini_output, restaurant_ingredients)
+            
+            # Step 2.5: Add unmatched restaurant ingredients not used as replacements
+            updated_model_ingredients, newly_added = append_strictly_unmatched_ingredients(
+                updated_model_ingredients, restaurant_ingredients, gemini_output
+            )
+            print("✅ Strictly unmatched ingredients added:", newly_added)
+            print("Updated model ingredients:", updated_model_ingredients)
 
             # Prepare payload for external API
             payload = {
                 "dish_name": dish_name,
                 "updated_fields": {
                     "full": {
-                        "ingredients": ingredients
+                        "ingredients": updated_model_ingredients
                     },
                     "cooking_style": cooking_style
                 }
             }
-            url = "https://production.fitshield.in/api/auto-update-model-dish"
+            url = "https://sandbox.fitshield.in/api/auto-update-model-dish"
             headers = {'Content-Type': 'application/json'}
 
             response = requests.put(url, headers=headers, json=payload)
@@ -352,6 +398,96 @@ def update_main_data(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
+def normalize_name(name):
+    return name.strip().lower()
+
+def add_potential_replacements_to_model(model_ingredients, gemini_output, restaurant_ingredients):
+    enriched = copy.deepcopy(model_ingredients)
+    name_to_model_item = {normalize_name(ing["name"]): ing for ing in enriched}
+    restaurant_name_set = {normalize_name(r["name"]) for r in restaurant_ingredients}
+
+    # Ensure all have a dict
+    for ing in enriched:
+        if "potential_replacement" not in ing or not isinstance(ing["potential_replacement"], dict):
+            ing["potential_replacement"] = {}
+
+    # 1. Add Gemini-suggested alternatives
+    for alt in gemini_output.get("alternatives", []):
+        homemade_name = normalize_name(alt["homemade"])
+        restaurant_name = alt["restaurant"]
+
+        if homemade_name in name_to_model_item:
+            rep_map = name_to_model_item[homemade_name]["potential_replacement"]
+            rep_map[restaurant_name] = rep_map.get(restaurant_name, 0) + 1
+
+    # 2. Add exact matches as replacements
+    for model_ing in enriched:
+        model_name = model_ing["name"]
+        norm_name = normalize_name(model_name)
+
+        if norm_name in restaurant_name_set:
+            rep_map = model_ing["potential_replacement"]
+            rep_map[model_name] = rep_map.get(model_name, 0) + 1
+
+    return enriched
+
+def append_strictly_unmatched_ingredients(model_ingredients, restaurant_ingredients, gemini_output):
+    # Set of normalized names in the model
+    model_names = {normalize_name(ing["name"]) for ing in model_ingredients}
+    
+    # Set of restaurant ingredients already used as potential_replacement
+    matched_restaurant_names = {
+        normalize_name(item["restaurant"]) for item in gemini_output.get("alternatives", [])
+    }
+
+    added = []
+
+    for r_ing in restaurant_ingredients:
+        r_name = normalize_name(r_ing.get("name", ""))
+        
+        # Skip if name is empty or other required fields are missing
+        if not r_name or not r_ing.get("quantity") or not r_ing.get("unit"):
+            continue
+
+        if r_name not in model_names and r_name not in matched_restaurant_names:
+            new_ingredient = copy.deepcopy(r_ing)
+            new_ingredient["potential_replacement"] = []
+            model_ingredients.append(new_ingredient)
+            added.append(new_ingredient["name"])
+
+
+    return model_ingredients, added
+
+# Configure your API key
+genai.configure(api_key="AIzaSyBhRLM3zVcTNBN-MXYhqs9zTz9D0Jb7Jp0")
+
+def generate_replacements(model_ingredients, resurant_ingredients):
+    # Prepare the input as JSON string
+    input_json = {
+        "homemade_ingredients": [m["name"] for m in model_ingredients],
+        "restaurant_ingredients": [r["name"] for r in resurant_ingredients],
+    }
+
+    # Set up the model
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash-preview-04-17",  # or "gemini-pro", "gemini-1.5-pro", etc.
+        system_instruction=aa_text
+    )
+
+    # Generate content
+    response = model.generate_content(
+        json.dumps(input_json),
+        generation_config={"response_mime_type": "application/json"}
+    )
+
+    try:
+        return json.loads(response.text)
+    except json.JSONDecodeError:
+        raise ValueError("Gemini response is not valid JSON:\n" + response.text)
+
+
+
+# === Suggest Ingredient Name ===
 
 @csrf_exempt
 def suggest_ingredient_name(request):
@@ -402,57 +538,7 @@ def suggest_five_ingredient_name(partial_name):
     return top_matches
 
 
-
-# === Utility Functions ===
-
-def get_dish_data(collection, target_id, dish_name):
-    result = collection.find_one(
-        {
-            "_id": target_id,
-            "menu.dish_name": dish_name
-        },
-        {
-            "menu.$": 1,
-            "_id": 0
-        }
-    )
-
-    if result and "menu" in result:
-        try:
-            dish_data = result["menu"][0]["dish_variants"]["normal"]["full"]
-            ingredients = dish_data["ingredients"]
-            nutrients = dish_data["nutrients"]
-            formatted_string = ', '.join(f"{item['quantity']} {item['unit']} {item['name']}" for item in ingredients)
-            return formatted_string, nutrients
-        except (KeyError, IndexError, TypeError) as e:
-            print("Error extracting dish data:", e)
-            return None, None
-    return None, None
-
-
-def get_nutritionix_summary(query):
-    url = "https://trackapi.nutritionix.com/v2/natural/nutrients"
-    headers = {
-        "x-app-id": APP_ID,
-        "x-app-key": API_KEY,
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(url, headers=headers, json={"query": query})
-
-    if response.status_code != 200:
-        return {"error": f"{response.status_code} - {response.text}"}
-
-    result = response.json()
-    total_nutrients = {}
-
-    for food in result.get("foods", []):
-        for nutrient, value in food.items():
-            if nutrient.startswith("nf_") and isinstance(value, (int, float)):
-                total_nutrients[nutrient] = total_nutrients.get(nutrient, 0) + value
-
-    return total_nutrients
-
+# === Verify Dish Data ===
 
 @require_GET
 def verify_dish_data(request):
@@ -533,3 +619,51 @@ def verify_dish_data(request):
     avg_percent_mismatch = round(sum(percent_diffs) / len(percent_diffs), 2) if percent_diffs else None
 
     return JsonResponse({'success': True, 'comparison': comparison, 'average_percent_mismatch': avg_percent_mismatch})
+
+def get_dish_data(collection, target_id, dish_name):
+    result = collection.find_one(
+        {
+            "_id": target_id,
+            "menu.dish_name": dish_name
+        },
+        {
+            "menu.$": 1,
+            "_id": 0
+        }
+    )
+
+    if result and "menu" in result:
+        try:
+            dish_data = result["menu"][0]["dish_variants"]["normal"]["full"]
+            ingredients = dish_data["ingredients"]
+            nutrients = dish_data["nutrients"]
+            formatted_string = ', '.join(f"{item['quantity']} {item['unit']} {item['name']}" for item in ingredients)
+            return formatted_string, nutrients
+        except (KeyError, IndexError, TypeError) as e:
+            print("Error extracting dish data:", e)
+            return None, None
+    return None, None
+
+def get_nutritionix_summary(query):
+    url = "https://trackapi.nutritionix.com/v2/natural/nutrients"
+    headers = {
+        "x-app-id": APP_ID,
+        "x-app-key": API_KEY,
+        "Content-Type": "application/json"
+    }
+    print(query)
+    response = requests.post(url, headers=headers, json={"query": query})
+
+    if response.status_code != 200:
+        return {"error": f"{response.status_code} - {response.text}"}
+
+    result = response.json()
+    total_nutrients = {}
+
+    for food in result.get("foods", []):
+        for nutrient, value in food.items():
+            if nutrient.startswith("nf_") and isinstance(value, (int, float)):
+                total_nutrients[nutrient] = total_nutrients.get(nutrient, 0) + value
+
+    return total_nutrients
+

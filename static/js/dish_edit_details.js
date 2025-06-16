@@ -88,8 +88,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.value = ingredient.name;
-                nameInput.style.flex = '1'; // Reduced from '2' to '1'
-                nameInput.style.maxWidth = '80px'; // Add a max width for further control
+                nameInput.style.flex = '2'; // Reduced from '2' to '1'
+                //nameInput.style.padding = "0 150px";
+                nameInput.style.textAlign = "left"; // Makes text align to the left
                 nameInput.className = 'ingredient-name';
 
                 const quantityInput = document.createElement('input');
