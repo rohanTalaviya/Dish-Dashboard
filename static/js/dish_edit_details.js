@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
-                        alert(data.message);
+                        alert(data.message + " Restaurant verified status : " +data.restaurant_verified_status );
                     } else {
                         alert('Failed to update verified status: ' + (data.error || JSON.stringify(data)));
                     }
