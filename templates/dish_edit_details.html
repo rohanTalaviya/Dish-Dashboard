@@ -183,18 +183,22 @@
             cursor: pointer;
             margin-left: 18px;
             user-select: none;
+            gap: 8px;
         }
-        .switch input[type="radio"] {
-            display: none;
+        .switch input[type="checkbox"] {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
         }
         .slider {
-            width: 42px;
+            width: 44px;
             height: 24px;
-            background: #ccc;
+            background: #444;
             border-radius: 24px;
             position: relative;
             transition: background 0.3s;
-            margin-right: 10px;
+            display: inline-block;
         }
         .slider:before {
             content: "";
@@ -208,12 +212,11 @@
             transition: transform 0.3s;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
-        .switch input[type="radio"]:checked + .slider {
+        .switch input[type="checkbox"]:checked + .slider {
             background: #4CAF50;
         }
-        .switch input[type="radio"]:checked + .slider:before {
-            transform: translateX(18px);
-            background: #fff;
+        .switch input[type="checkbox"]:checked + .slider:before {
+            transform: translateX(20px);
         }
         .switch-label {
             font-size: 1em;
@@ -246,7 +249,7 @@
                     <button id="verifyData">Verify Data</button>
                     <button id="updateMainData" style="display:none;">Update data in Main data</button>
                     <label class="switch">
-                        <input type="radio" id="dishApproveRadio" name="dishApproveRadio">
+                        <input type="checkbox" id="dishApproveRadio" name="dishApproveRadio">
                         <span class="slider"></span>
                         <span class="switch-label">Dish Approve</span>
                     </label>

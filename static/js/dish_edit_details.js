@@ -352,11 +352,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Set the "Dish Approve" radio button based on is_verified
             const dishApproveRadio = document.getElementById('dishApproveRadio');
-            if (details.is_verified === true) {
+            if (details.verified === true) {
                 dishApproveRadio.checked = true;
             } else {
                 dishApproveRadio.checked = false;
             }
+
+            // Add event listener to call API when radio button changes
+            dishApproveRadio.addEventListener('change', function() {
+                const verified = dishApproveRadio.checked;
+                const restro_id = restaurantId; // already defined above
+                const dish_id = details._id;    // already available in details
+
+                // Only call if both IDs are present
+                if (!restro_id || !dish_id) {
+                    alert('Missing restaurant or dish ID.');
+                    return;
+                }
+
+                fetch('https://production.fitshield.in/api/update-dish-verified-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZml0c2hpZWxkX3VzZXJfMTQ1ZGUwODJlZjdkNDJmZSIsInNvdXJjZSI6ImFwcCIsImlhdCI6MTc0OTIwOTg3OSwiZXhwIjoxNzUxODAxODc5fQ.Ky4LR3MBQC8UfQmKeNelkFgPmzEX4bFJG9n4vVG2dk0'
+                    },
+                    body: JSON.stringify({
+                        restro_id: restro_id,
+                        dish_id: dish_id,
+                        verified: verified
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert(data.message);
+                    } else {
+                        alert('Failed to update verified status: ' + (data.error || JSON.stringify(data)));
+                    }
+                })
+                .catch(error => {
+                    alert('Error updating verified status: ' + error);
+                });
+            });
 
             // Add event listener for the "Run Model" button
             document.getElementById('runModel').addEventListener('click', function() {
@@ -647,9 +684,7 @@ document.getElementById('updateAllFields').addEventListener('click', function() 
     };
 
     // Add is_verified if radio is checked
-    if (document.getElementById('dishApproveRadio').checked) {
-        updates['is_verified'] = true;
-    }
+    updates['verified'] = document.getElementById('dishApproveRadio').checked;
 
     const payload = {
         dish_name: dishName, // Ensure dish_name is included in the payload
